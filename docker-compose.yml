@@ -1,0 +1,37 @@
+version: "3"
+
+services:
+  traefik:
+    image: traefik
+    container_name: "traefik"
+    command: --api --docker --docker.domain=localhost
+    networks:
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs/:/certs/
+      - ./traefik.toml:/etc/traefik/traefik.toml
+
+  siqnal:
+    build:
+      dockerfile: Dockerfile
+      context: ./packages/siqnal
+    container_name: "siqnal"
+    volumes:
+      - "./packages/siqnal/src:/usr/src/app/src"
+      - "./certs/:/certs/"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.frontend.rule=Host:siqnal.localhost,siqnal.javisantos.com"
+      - "traefik.port=8443"
+      - traefik.protocol=https
+    networks:
+      - web
+
+networks:
+  web:
+    external:
+      name: web

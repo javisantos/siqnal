@@ -1,0 +1,21 @@
+{
+  "name": "siqnal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "nodemon --watch src/server.js --exec 'ncc run --quiet' src/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "hyperid": "^2.0.2",
+    "libsodium-wrappers": "^0.7.4",
+    "log-symbols": "^3.0.0"
+  },
+  "devDependencies": {
+    "@zeit/ncc": "^0.18.3",
+    "nodemon": "^1.19.0"
+  }
+}
