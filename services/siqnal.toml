@@ -1,0 +1,32 @@
+[backends]
+  [backends.siqnal]
+    [backends.siqnal.servers]
+      [backends.siqnal.servers.server0]
+        url = "https://siqnal:8443"
+        weight = 1
+
+[frontends]
+  [frontends.siqnal]
+    backend = "siqnal"
+    passHostHeader = true
+      [frontends.siqnal.routes]
+        [frontends.siqnal.routes.route1]
+          rule= "Host:siqnal.localhost,did.link"
+
+  [frontends.siqnal.ratelimit]
+        extractorfunc = "client.ip"
+          [frontends.siqnal.ratelimit.rateset.rateset1]
+            period = "10s"
+            average = 100
+            burst = 200
+          [frontends.siqnal.ratelimit.rateset.rateset2]
+            period = "3s"
+            average = 5
+            burst = 10
+  
+  [frontends.siqnal.errors]
+      [frontends.siqnal.errors.network]
+        status = ["400-599"]
+        query = "/errors/{status}.html"
+        backend = "static"
+  

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta http-equiv="origin-trial"
+        content="Ahri2zhfNSeIMlHPVGU6Qz7GcQoTz7rPKjDoMdEWKD/OEL2LDf2ABdhYyo7n9/H2futqKqFzaOgsUwzfJXTE0A0AAABleyJvcmlnaW4iOiJodHRwczovL2RpZC5saW5rOjQ0MyIsImZlYXR1cmUiOiJSVENRdWljVHJhbnNwb3J0IiwiZXhwaXJ5IjoxNTYzOTI2Mzk5LCJpc1N1YmRvbWFpbiI6dHJ1ZX0=">
+    <title>QuicPeer</title>
+</head>
+
+<body>
+    <script type="module">
+        import QuicPeer from '../js/quicpeer.js'
+        let gatherOptions = {
+            gatherPolicy: "all",
+            'iceServers': [
+                {
+                    urls: 'stun:coturn.did.link:5349'
+                },
+                {
+                    urls: 'turn:88.17.35.146:5349',
+                    credential: 'javi123',
+                    username: 'javi'
+                }
+            ]
+        }
+        let peer1 = new QuicPeer({ initiator: true, debug: true, gatherOptions })
+
+        let siqnal1 = new EventSource('https://did.link/channelname')
+        siqnal1.onerror = function () {
+            console.log("EventSource failed.");
+        };
+        siqnal1.addEventListener('ready', (event) => {
+            let { data } = event
+            peer1.on('signal', data => {
+                console.log("Peer1: Sending signaling to siqnal %o", data.iceParams.usernameFragment)
+                fetch('https://did.link/channelname', {
+                    method: 'post',
+                    body: JSON.stringify({ type: "signal", ...data })
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    console.log("Peer1 signaling", data)
+                });
+
+            })
+            peer1.on('connect', () => {
+                peer1.write("World!")
+            })
+            peer1.on('data', data => {
+                console.log('Peer1: data received %o', data)
+            })
+        })
+        siqnal1.addEventListener('signal', (event) => {
+            let { data } = event
+            let dataParsed = JSON.parse(data)
+            if (peer1.usernameFragment !== dataParsed.iceParams.usernameFragment) {
+                peer1.signal(dataParsed)
+            }
+        })
+
+    </script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,13 @@
+[backends]
+    [backends.static]
+      [backends.static.servers]
+            [backends.static.servers.server0]
+                url = "https://static:8443"
+                weight = 1
+[frontends]
+  [frontends.static]
+    backend = "static"
+    passHostHeader = true
+      [frontends.static.routes]
+        [frontends.static.routes.route1]
+          rule= "Host:static.localhost,www.did.link,PathPrefix:/html,/css,/fonts,/img,/js,/errors,/favicon.ico"

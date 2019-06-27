@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <meta http-equiv="origin-trial"
+        content="Ahri2zhfNSeIMlHPVGU6Qz7GcQoTz7rPKjDoMdEWKD/OEL2LDf2ABdhYyo7n9/H2futqKqFzaOgsUwzfJXTE0A0AAABleyJvcmlnaW4iOiJodHRwczovL2RpZC5saW5rOjQ0MyIsImZlYXR1cmUiOiJSVENRdWljVHJhbnNwb3J0IiwiZXhwaXJ5IjoxNTYzOTI2Mzk5LCJpc1N1YmRvbWFpbiI6dHJ1ZX0=">
+    <title>QuicPeer</title>
+</head>
+
+<body>
+    <script type="module">
+        import QuicPeer from '../js/quicpeer.js'
+        let gatherOptions = {
+            gatherPolicy: "all",
+            'iceServers': [
+                {
+                    urls: 'stun:did.link:5349'
+                },
+                {
+                    urls: 'turn:localhost:5349',
+                    credential: 'javi123',
+                    username: 'javi'
+                }
+            ]
+        }
+        let peer2 = new QuicPeer({ debug: true, gatherOptions })
+        let siqnal2 = new EventSource('https://did.link/channelname')
+        siqnal2.addEventListener('ready', (event) => {
+            let { data } = event
+            peer2.on('signal', data => {
+                console.log("Peer2: Sending signaling to siqnal %o", data.iceParams.usernameFragment)
+                fetch('https://did.link/channelname', {
+                    method: 'post',
+                    body: JSON.stringify({ type: "signal", ...data })
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (data) {
+                    console.log("Peer2 signaling", data)
+                });
+
+            })
+            peer2.on('connect', () => {
+                peer2.write("Hello!")
+                window.setInterval(writeTime, 10000)
+            })
+            function writeTime() {
+                let d = new Date()
+                var h = addZero(d.getHours());
+                var m = addZero(d.getMinutes());
+                var s = addZero(d.getSeconds());
+                peer2.write(h + ":" + m + ":" + s)
+            }
+            function addZero(i) {
+                if (i < 10) {
+                    i = "0" + i;
+                }
+                return i;
+            }
+            peer2.on('data', data => {
+                console.log('Peer2: data received %o', data)
+            })
+        })
+        siqnal2.addEventListener('signal', (event) => {
+            let { data } = event
+            let dataParsed = JSON.parse(data)
+            if (peer2.usernameFragment !== dataParsed.iceParams.usernameFragment) {
+                peer2.signal(dataParsed)
+            }
+        })
+    </script>
+
+
+</body>
+
+</html>

@@ -4,7 +4,22 @@ services:
   traefik:
     image: traefik
     container_name: "traefik"
-    command: --api --docker --docker.domain=localhost
+    command: --api --docker --insecureSkipVerify
+      --defaultentrypoints=http,https
+      --entryPoints='Name:http Address::80 Redirect.EntryPoint:https'
+      --entryPoints='Name:https Address::443 TLS:/certs/fullchain.pem,/certs/privkey.pem'
+      --logLevel=DEBUG
+      --docker.watch
+      --docker.exposedbydefault=false
+      --sendAnonymousUsage=false
+      --file.directory="/services/"
+      --file.watch=true
+      --acme.tlschallenge=true
+      --acme.entrypoint=https
+      --acme.storage=/etc/traefik/acme/acme.json
+      --acme.caserver="https://acme-staging-v02.api.letsencrypt.org/directory"
+      --acme.onhostrule=true
+
     networks:
       - web
     ports:
@@ -13,25 +28,51 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./certs/:/certs/
-      - ./traefik.toml:/etc/traefik/traefik.toml
+      - ./services/:/services/
+      - ./acme:/etc/traefik/acme
 
   siqnal:
-    build:
-      dockerfile: Dockerfile
-      context: ./packages/siqnal
+    build: ./services/siqnal
     container_name: "siqnal"
     volumes:
-      - "./packages/siqnal/src:/usr/src/app/src"
+      - "./services/siqnal/src:/home/siqnal/src"
       - "./certs/:/certs/"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.frontend.rule=Host:siqnal.localhost,siqnal.javisantos.com"
-      - "traefik.port=8443"
-      - traefik.protocol=https
     networks:
       - web
+    labels:
+      - traefik.backend=siqnal
+
+  static:
+    image: "node:12"
+    working_dir: /home/static
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./public:/home/static/public
+      - ./certs/:/home/static/certs
+    command: bash -c "npm install -g http2-static && http2-static public --port 8443 --cert ./certs/fullchain.pem --key ./certs/privkey.pem"
+    networks:
+      - web
+    labels:
+      - traefik.backend=static
+
+  coturn:
+    image: "instrumentisto/coturn"
+    volumes:
+      - ./coturn/turnserver.conf:/my/coturn.conf
+      - ./certs:/certs
+    command: -c /my/coturn.conf
+    ports:
+      - "3478:3478/udp" # STUN/TURN UDP
+      - "3478:3478/tcp" # STUN/TURN TCP
+      - "3479:3479/udp" # STUN/TURN UDP Alt port (RFC5780 support)
+      - "3479:3479/tcp" # STUN/TURN TCP Alt port (RFC5780 support)
+      - "5349:5349/udp" # STUN/TURN DTLS
+      - "5349:5349/tcp" # STUN/TURN TLS
+      - "5350:5350/udp" # STUN/TURN DTLS Alt port (RFC5780 support)
+      - "5350:5350/tcp" # STUN/TURN TLS Alt port (RFC5780 support)
+      - "49160:49200/udp" # UDP media ports for TURN relay
 
 networks:
   web:
-    external:
-      name: web
+    external: true
